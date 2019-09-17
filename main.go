@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const errorMessage = `the tool expects exactly two arguments: "<path prefix> <dir name>", both must be non-empty and very strict paths` + "\n"
@@ -59,6 +60,44 @@ func buildFileList(out *[]string, prefix string) {
 	*out = append(*out, prefix)
 }
 
+func pathCheck(a, b string) error {
+	if filepath.Clean(a) != a || strings.TrimSpace(a) != a {
+		return fmt.Errorf("first argument must be a clean path")
+	}
+	if a == "" {
+		return fmt.Errorf("first argument must be non-empty")
+	}
+	if a == "." {
+		return fmt.Errorf("first argument must not be a dot")
+	}
+	if a == "/" {
+		return fmt.Errorf("first argument must not be a root")
+	}
+	if !filepath.IsAbs(a) {
+		return fmt.Errorf("first argument must be an absolute path")
+	}
+
+	if filepath.Clean(b) != b || strings.TrimSpace(b) != b {
+		return fmt.Errorf("second argument must be a clean path")
+	}
+	if strings.Contains(b, "..") {
+		return fmt.Errorf("second argument must not contain ..")
+	}
+	if b == "" {
+		return fmt.Errorf("second argument must be non-empty")
+	}
+	if b == "." {
+		return fmt.Errorf("second argument must not be a dot")
+	}
+	if b == "/" {
+		return fmt.Errorf("second argument must not be a root")
+	}
+	if filepath.IsAbs(b) {
+		return fmt.Errorf("second argument must not be an absolute path")
+	}
+	return nil
+}
+
 func main() {
 	if len(os.Args) != 3 {
 		fmt.Fprintf(os.Stderr, errorMessage)
@@ -66,30 +105,9 @@ func main() {
 	}
 
 	prefix := os.Args[1]
-	if filepath.Clean(prefix) != prefix {
-		fmt.Fprintf(os.Stderr, "first argument must be a clean path\n")
-		os.Exit(1)
-	}
-	if prefix == "" {
-		fmt.Fprintf(os.Stderr, "first argument must be non-empty\n")
-		os.Exit(1)
-	}
-	if !filepath.IsAbs(prefix) {
-		fmt.Fprintf(os.Stderr, "first argument must be an absolute path\n")
-		os.Exit(1)
-	}
-
 	dir := os.Args[2]
-	if filepath.Clean(dir) != dir {
-		fmt.Fprintf(os.Stderr, "second argument must be a clean path\n")
-		os.Exit(1)
-	}
-	if dir == "" {
-		fmt.Fprintf(os.Stderr, "second argument must be non-empty\n")
-		os.Exit(1)
-	}
-	if dir == "." {
-		fmt.Fprintf(os.Stderr, "second argument must not be a dot\n")
+	if err := pathCheck(prefix, dir); err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
 
